@@ -5,6 +5,7 @@ if empty(glob('~/.vim/autoload/plug.vim'))
 endif
 
 call plug#begin('~/.vim/plug')
+Plug 'tpope/vim-surround'
 call plug#end()
 
 " Basics
