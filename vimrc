@@ -5,26 +5,60 @@ if empty(glob('~/.vim/autoload/plug.vim'))
 endif
 
 call plug#begin('~/.vim/plug')
+
+" Basics
+
 Plug 'tpope/vim-surround'
 Plug 'doums/darcula'
-Plug 'ptzz/lf.vim'
+
+" Snippets
+
+Plug 'SirVer/ultisnips'
+
+" Windows and popups
+
 Plug 'voldikss/vim-floaterm'
-Plug 'euclidianAce/BetterLua.vim'
-Plug 'dense-analysis/ale'
+Plug 'ptzz/lf.vim'
+Plug 'nvim-lua/plenary.nvim'
+Plug 'nvim-lua/popup.nvim'
+
+" Help and finding
+
 Plug 'liuchengxu/vim-which-key'
 Plug 'sudormrfbin/cheatsheet.nvim'
-Plug 'nvim-lua/popup.nvim'
-Plug 'nvim-lua/plenary.nvim'
 Plug 'nvim-telescope/telescope.nvim'
-Plug 'cespare/vim-toml', { 'branch': 'main' }
-Plug 'plasticboy/vim-markdown'
-Plug 'iamcco/markdown-preview.nvim', { 'do': 'cd app && yarn install'  }
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
+
+" Formatting
+
+Plug 'sbdchd/neoformat'
+
+" LSP and completion
+
+Plug 'neovim/nvim-lspconfig'
+Plug 'hrsh7th/cmp-nvim-lsp'
+Plug 'hrsh7th/cmp-buffer'
+Plug 'hrsh7th/cmp-path'
+Plug 'hrsh7th/cmp-cmdline'
+Plug 'hrsh7th/nvim-cmp'
+Plug 'quangnguyen30192/cmp-nvim-ultisnips'
+
+" Languages
+
+Plug 'plasticboy/vim-markdown'
+Plug 'iamcco/markdown-preview.nvim', { 'do': 'cd app && yarn install'  }
+
+Plug 'cespare/vim-toml', { 'branch': 'main' }
+
+Plug 'euclidianAce/BetterLua.vim'
+
 Plug 'hail2u/vim-css3-syntax'
 Plug 'ap/vim-css-color'
-Plug 'SirVer/ultisnips'
-Plug 'shougo/deoplete.nvim'
+
+Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
+
+
 call plug#end()
 
 
@@ -76,19 +110,12 @@ let g:lf_command_override = 'lf -command "set hidden" -config ~/.config/lf/lfrcv
 nnoremap <silent> <leader><right> :tabn<CR>
 nnoremap <silent> <leader><left> :tabp<CR>
 
-" ALE
+" Formatting
 
-let g:ale_fixers = {
-\   'lua': [
-\       'lua-format',
-\   ],
-\   'json': ['jq'],
-\   'javascript': ['prettier'],
-\   'css': ['prettier'],
-\   'html': ['prettier'],
-\}
+nnoremap <leader>l :Neoformat<CR>
 
-nnoremap <leader>l :ALEFix<CR>
+let g:neoformat_enabled_css = [ 'prettier' ]
+
 
 " Whichkey
 "
@@ -118,7 +145,7 @@ let g:vim_markdown_frontmatter = 1  " for YAML format
 let g:rg_path = 'rg --vimgrep --type-not sql --smart-case'
 
 " Maps <leader>/ so we're ready to type the search keyword
-nnoremap <Leader>/ :Rg<Space>
+nnoremap <Leader>/ :Rg<CR>
 " }}}
 
 " Navigate quickfix list with ease
@@ -130,3 +157,66 @@ let g:mkdp_browser = 'chromium'
 
 let g:UltiSnipsExpandTrigger="<tab>"
 
+" nvim-cmp completion
+set completeopt=menu,menuone,noselect
+
+lua <<EOF
+  -- Setup nvim-cmp.
+  local cmp = require'cmp'
+
+  cmp.setup({
+    snippet = {
+      -- REQUIRED - you must specify a snippet engine
+      expand = function(args)
+        -- vim.fn["vsnip#anonymous"](args.body) -- For `vsnip` users.
+        -- require('luasnip').lsp_expand(args.body) -- For `luasnip` users.
+        -- require('snippy').expand_snippet(args.body) -- For `snippy` users.
+        vim.fn["UltiSnips#Anon"](args.body) -- For `ultisnips` users.
+      end,
+    },
+    mapping = {
+      ['<C-b>'] = cmp.mapping(cmp.mapping.scroll_docs(-4), { 'i', 'c' }),
+      ['<C-f>'] = cmp.mapping(cmp.mapping.scroll_docs(4), { 'i', 'c' }),
+      ['<C-Space>'] = cmp.mapping(cmp.mapping.complete(), { 'i', 'c' }),
+      ['<C-y>'] = cmp.config.disable, -- Specify `cmp.config.disable` if you want to remove the default `<C-y>` mapping.
+      ['<C-e>'] = cmp.mapping({
+        i = cmp.mapping.abort(),
+        c = cmp.mapping.close(),
+      }),
+      ['<CR>'] = cmp.mapping.confirm({ select = true }), -- Accept currently selected item. Set `select` to `false` to only confirm explicitly selected items.
+    },
+    sources = cmp.config.sources({
+      { name = 'nvim_lsp' },
+      -- { name = 'vsnip' }, -- For vsnip users.
+      -- { name = 'luasnip' }, -- For luasnip users.
+      { name = 'ultisnips' }, -- For ultisnips users.
+      -- { name = 'snippy' }, -- For snippy users.
+    }, {
+      { name = 'buffer' },
+    })
+  })
+
+  -- Use buffer source for `/` (if you enabled `native_menu`, this won't work anymore).
+  cmp.setup.cmdline('/', {
+    sources = {
+      { name = 'buffer' }
+    }
+  })
+
+  -- Use cmdline & path source for ':' (if you enabled `native_menu`, this won't work anymore).
+  cmp.setup.cmdline(':', {
+    sources = cmp.config.sources({
+      { name = 'path' }
+    }, {
+      { name = 'cmdline' }
+    })
+  })
+
+  -- Setup lspconfig.
+  local capabilities = require('cmp_nvim_lsp').update_capabilities(vim.lsp.protocol.make_client_capabilities())
+  capabilities.textDocument.completion.completionItem.snippetSupport = true
+  -- Replace <YOUR_LSP_SERVER> with each lsp server you've enabled.
+  require('lspconfig')['cssls'].setup {
+    capabilities = capabilities
+  }
+EOF
